@@ -1,0 +1,6 @@
+sources:
+  - name: nubank_purchases
+    database: nubank_analysis  
+    schema: raw_nubank  
+    tables:
+      - name: transactions
