@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: int__nubank_transactions
+    description: >
+      Tabela intermediária consolidando todas as transações do Nubank, unificando
+      débitos, créditos e ajustes de juros relacionados a PIX no crédito.
+      Remove duplicidades causadas por pagamentos de fatura e transações
+      equivalentes entre cartão de crédito e débito.
+
+    columns:
+      - name: transaction_sk
+        description: >
+          Chave única da transação originada das tabelas de cartão de crédito
+          ou débito.
+
+        tests:
+          - not_null
+          - unique
+
+      - name: transaction_category
+        description: >
+          Categoria da transação, indicando se é uma transação de crédito,
+          débito ou outra classificação definida nas etapas de staging.
+
+        tests:
+          - not_null
+
+      - name: transaction_date
+        description: >
+          Data em que a transação ocorreu.
+
+        tests:
+          - not_null
+
+      - name: transaction_type
+        description: >
+          Tipo da transação, como pagamento de fatura, PIX, compra no débito,
+          juros de PIX no crédito, entre outros.
+
+        tests:
+          - not_null
+
+      - name: transaction_description
+        description: >
+          Descrição amigável da transação. Para juros de PIX no crédito,
+          contém a referência da transação original.
+
+      - name: transaction_amount
+        description: >
+          Valor monetário da transação. Valores de crédito são normalizados
+          para negativo quando representam despesas, enquanto pagamentos de
+          fatura permanecem positivos.
+
+        tests:
+          - not_null
