@@ -3,4 +3,5 @@ sources:
     database: nubank_analysis  
     schema: raw_nubank  
     tables:
-      - name: transactions
+      - name: debit_transactions
+      - name: credit_transactions
