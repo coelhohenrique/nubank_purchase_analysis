@@ -2,7 +2,8 @@ with renamed as (
     select
         cast(date as date) as transaction_date,
         cast(amount as double) as transaction_amount,
-        cast(title as string) as transaction_description
+        cast(title as string) as transaction_description,
+        cast(source_file as string) as source_file
     from {{ source('nubank_purchases', 'credit_transactions') }}
 ),
 
@@ -12,6 +13,7 @@ applying_logic as (
         transaction_date,
         transaction_amount,
         transaction_description,
+        source_file,
         case
             when transaction_description ilike '%"IOF de%' then 'Pagamento de IOF'
             when transaction_description ilike '%Pagamento recebido%' then 'Pagamento de fatura'
@@ -40,6 +42,11 @@ generating_sk as (
             when transaction_type = 'Pagamento de fatura' then {{ dbt_utils.generate_surrogate_key(['transaction_date', 'transaction_amount', 'transaction_type']) }}
             else null
         end as card_payment_sk,
+        row_number() over (
+            partition by transaction_date,
+                        recipient_name
+            order by transaction_index
+        ) as transaction_order,
         *
     from applying_logic
 )

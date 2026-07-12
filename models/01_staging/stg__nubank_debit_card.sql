@@ -3,7 +3,8 @@ with renamed as (
         cast(date as date) as transaction_date,
         cast(amount as double) as transaction_amount,
         cast(transaction_id as string) as transaction_id,
-        cast(description as string) as transaction_description
+        cast(description as string) as transaction_description,
+        cast(source_file as string) as source_file
     from {{ source('nubank_purchases', 'debit_transactions') }}
 ),
 
@@ -14,6 +15,7 @@ applying_logic as (
         transaction_amount,
         transaction_id,
         transaction_description,
+        source_file,
         case
             when transaction_description ilike '%Transferência Recebida - HEN.CO DESENVOLVIMENTO LTDA%' then 'Recebimento de Salário'
             when transaction_description ilike '%Pagamento de fatura%' then 'Pagamento de fatura'
@@ -46,6 +48,36 @@ generating_sk as (
         end as card_payment_sk,
         *
     from applying_logic
+),
+
+is_credit_pix as (
+    select transaction_id
+    from generating_sk
+    group by transaction_id
+    having count(*) > 1
+),
+
+transformed as (
+    select
+        gs.*,
+        case
+            when ic.transaction_id is null then 0
+            else row_number() over (partition by gs.transaction_id order by gs.transaction_amount)
+        end as dedup_flag
+    from generating_sk gs
+    left join is_credit_pix ic
+        on gs.transaction_id = ic.transaction_id
+),
+
+final as (
+    select
+        *,
+        case
+            when dedup_flag = 0 then 0
+            else row_number() over (partition by transaction_date, recipient_name order by abs(transaction_amount)) 
+        end as transaction_order
+    from transformed
+    where dedup_flag between 0 and 1
 )
 
-select * from generating_sk
+select * from final
