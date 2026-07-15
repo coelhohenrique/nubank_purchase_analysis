@@ -42,11 +42,6 @@ generating_sk as (
             when transaction_type = 'Pagamento de fatura' then {{ dbt_utils.generate_surrogate_key(['transaction_date', 'transaction_amount', 'transaction_type']) }}
             else null
         end as card_payment_sk,
-        row_number() over (
-            partition by transaction_date,
-                        recipient_name
-            order by transaction_index
-        ) as transaction_order,
         *
     from applying_logic
 )

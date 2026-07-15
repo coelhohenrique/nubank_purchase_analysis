@@ -26,6 +26,9 @@ applying_logic as (
             when transaction_description ilike '%Resgate RDB%' then 'Resgate em caixinha'
             when transaction_description ilike '%Valor adicionado na conta por cartão de crédito%' then 'Adição para pagamento PIX no Crédito'
             when transaction_description ilike '%Débito em conta%' then 'Débito em conta'
+            when transaction_description ilike '%Reembolso Recebido%' then 'Reembolso'
+            when transaction_description ilike '%Pagamento de Boleto%' then 'Pagamento de Boleto'
+            when transaction_description ilike '%Crédito em conta%' then 'Crédito em conta'
             else null
         end as transaction_type,
         trim(
@@ -57,27 +60,16 @@ is_credit_pix as (
     having count(*) > 1
 ),
 
-transformed as (
+final as (
     select
         gs.*,
         case
-            when ic.transaction_id is null then 0
-            else row_number() over (partition by gs.transaction_id order by gs.transaction_amount)
-        end as dedup_flag
+            when ic.transaction_id is not null then true
+            else false
+        end as is_credit_pix
     from generating_sk gs
     left join is_credit_pix ic
         on gs.transaction_id = ic.transaction_id
-),
-
-final as (
-    select
-        *,
-        case
-            when dedup_flag = 0 then 0
-            else row_number() over (partition by transaction_date, recipient_name order by abs(transaction_amount)) 
-        end as transaction_order
-    from transformed
-    where dedup_flag between 0 and 1
 )
 
 select * from final
